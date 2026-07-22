@@ -1,0 +1,241 @@
+// This file defines the data contracts (messages) for your Axiom package.
+// Every node's --input and --output refers to a message defined here.
+//
+// Run `axiom create message <Name>` to scaffold a new message below.
+// Run `axiom generate` to compile these definitions into language bindings in gen/.
+//
+// DOCUMENTATION
+//   Comments written directly above a message or field declaration are extracted
+//   automatically at publish time and shown in the Axiom registry as documentation.
+//   Write your descriptions there — no separate doc files needed.
+//
+//   Leading comment  (no blank line before the declaration) → registry description ✓
+//   Detached comment (blank line before the declaration)    → ignored by registry  ✗
+//
+// This file is yours to edit. Axiom only appends new message blocks — it never
+// overwrites or removes content you have written.
+
+syntax = "proto3";
+
+package christiangeorgelucas.crs_tools;
+
+// Data contracts for christiangeorgelucas/crs-tools — deterministic,
+// offline coordinate-reference-system (CRS) and map-projection
+// transformations plus CRS metadata introspection, wrapping proj4rs (a pure
+// Rust MIT/Apache-2.0 port of PROJ.4) and crs-definitions (a CC0-1.0,
+// zero-dependency EPSG registry of proj4/WKT2 definitions). Distinct from
+// christiangeorgelucas/geo-tools (WGS-84 geodesic distance/bearing/area on
+// native lon/lat, no CRS/projection machinery), geo-encoding-tools (geohash
+// and lat/lon<->UTM/MGRS coordinate CONVERSION via dedicated libraries, not
+// generic EPSG-driven reprojection), and geometry-tools (planar 2D geometry,
+// no CRS awareness at all) -- this package owns "which coordinate system is
+// this, and how do I move a coordinate between two of them."
+//
+// Every transform node uses conventional GIS axis order for its x/y or
+// lon/lat fields: x = longitude/easting, y = latitude/northing, regardless
+// of a CRS's own ISO-19111 authority-defined axis order (see
+// GetCRSAxisInfo). Offline and deterministic: no network grid downloads are
+// ever performed (this package's dependencies have no such capability to
+// begin with, unlike PROJ's optional CDN grid fetch).
+
+// A bare planar/generic coordinate pair, in whatever axis order the caller's
+// source CRS implies under GIS convention (x = longitude/easting, y =
+// latitude/northing). Used as a batch-list element; see CoordinateTransformInput
+// for the single-point form.
+message XYPoint {
+  double x = 1;
+  double y = 2;
+}
+
+// A single coordinate plus the CRS to transform it from and to. Both
+// `source_crs`/`target_crs` accept an EPSG code ("EPSG:4326" or bare
+// "4326") or a raw PROJ4 definition string ("+proj=longlat +datum=WGS84
+// +no_defs"). x/y follow GIS convention (longitude/easting, latitude/northing).
+message CoordinateTransformInput {
+  double x = 1;
+  double y = 2;
+  string source_crs = 3;
+  string target_crs = 4;
+}
+
+// The result of TransformCoordinate.
+message TransformedCoordinate {
+  double x = 1;
+  double y = 2;
+  // INVALID_CRS (source_crs/target_crs not recognized), NON_FINITE_COORD,
+  // TRANSFORM_FAILED (input point is outside the projection's valid
+  // domain); empty on success.
+  string error = 3;
+}
+
+// A list of coordinates plus the CRS to transform them from and to, for
+// TransformCoordinates (batch). Capped at 5,000 points per call.
+message BatchCoordinateTransformInput {
+  repeated XYPoint points = 1;
+  string source_crs = 2;
+  string target_crs = 3;
+}
+
+// The batch result of TransformCoordinates. `error` is set only for a
+// call-level failure (bad CRS, TOO_MANY_POINTS) and `points` is then empty;
+// a per-point failure (e.g. one non-finite coordinate in an otherwise valid
+// batch) is instead reported on that element's own TransformedCoordinate.error,
+// with the rest of the batch still transformed.
+message BatchTransformedCoordinates {
+  repeated TransformedCoordinate points = 1;
+  // TOO_MANY_POINTS (over 5,000), INVALID_CRS, EMPTY_INPUT; empty on success.
+  string error = 2;
+}
+
+// A WGS-84 geographic point, decimal degrees, [longitude, latitude] order
+// (matches christiangeorgelucas/geo-tools' convention so points chain
+// between the two packages without renaming).
+message GeoCoordinate {
+  double lon = 1;
+  double lat = 2;
+  // NON_FINITE_COORD, OUT_OF_RANGE (|lat|>90 or |lon|>180); empty on success.
+  string error = 3;
+}
+
+// A Web Mercator (EPSG:3857) point, in meters.
+message MercatorPoint {
+  double x = 1;
+  double y = 2;
+  // NON_FINITE_COORD, OUT_OF_RANGE (input latitude beyond Web Mercator's
+  // +/-85.06 valid domain, or a non-finite meter value on the inverse
+  // conversion); empty on success.
+  string error = 3;
+}
+
+// A CRS identifier: an EPSG code ("EPSG:4326" or bare "4326"), a raw PROJ4
+// definition string ("+proj=longlat +datum=WGS84 +no_defs"), or a WKT
+// string carrying a trailing `ID["EPSG",<code>]` (WKT2) or
+// `AUTHORITY["EPSG","<code>"]]` (WKT1) tag -- the standard way EPSG-derived
+// WKT self-identifies; a WKT string with no such tag cannot be resolved
+// back to a registry entry and is rejected with a structured error, not a
+// crash).
+message CrsQuery {
+  string crs = 1;
+}
+
+// The UTM zone/hemisphere/EPSG code covering a given WGS-84 point, per the
+// standard UTM zoning formula (zone = floor((lon+180)/6)+1, 1-60; northern
+// hemisphere lat>=0) and the standard WGS-84/UTM EPSG numbering scheme
+// (326xx north, 327xx south) -- then cross-checked by confirming that EPSG
+// code actually resolves in the crs-definitions registry. This identifies a
+// suitable projected CRS for accurate local measurement near a point; it
+// does not convert a coordinate INTO UTM eastings/northings (see
+// christiangeorgelucas/geo-encoding-tools' LatLonToUTM for that).
+message UtmZoneInfo {
+  int32 zone_number = 1;
+  string hemisphere = 2;
+  string epsg_code = 3;
+  string crs_name = 4;
+  // NON_FINITE_COORD, OUT_OF_RANGE (|lat|>90 or |lon|>180); empty on success.
+  string error = 5;
+}
+
+// Structured metadata about a CRS, resolved from the crs-definitions EPSG
+// registry via its WKT2 representation.
+message CrsInfo {
+  string epsg_code = 1;
+  string name = 2;
+  // "geographic" (GEOGCRS) or "projected" (PROJCRS); "unknown" if the WKT's
+  // outermost keyword is neither (rare, e.g. a raw PROJ4-string CRS with no
+  // registry WKT to classify).
+  string crs_type = 3;
+  string datum = 4;
+  string ellipsoid_name = 5;
+  double ellipsoid_semi_major_m = 6;
+  double ellipsoid_inverse_flattening = 7;
+  string unit = 8;
+  double unit_to_meter = 9;
+  // The EPSG registry's own documented area of applicability for this CRS
+  // (its WKT USAGE/AREA/BBOX clause) -- e.g. "France - onshore and
+  // offshore..." with a south/west/north/east bound in decimal degrees.
+  string area_description = 10;
+  double area_south_lat = 11;
+  double area_west_lon = 12;
+  double area_north_lat = 13;
+  double area_east_lon = 14;
+  // INVALID_CRS, UNKNOWN_EPSG_CODE (well-formed code, not in the registry);
+  // empty on success.
+  string error = 15;
+}
+
+// The WKT2 (ISO 19162) and PROJ4-string representations of a CRS, as
+// published by the EPSG registry via crs-definitions.
+message CrsRepresentation {
+  string wkt = 1;
+  string proj4 = 2;
+  // INVALID_CRS, UNKNOWN_EPSG_CODE; empty on success.
+  string error = 3;
+}
+
+// Whether a CRS identifier is recognized, without crashing on a bad one.
+message CrsValidation {
+  bool valid = 1;
+  string epsg_code = 2;
+  string name = 3;
+  // Populated when valid=false: EMPTY_INPUT, UNPARSEABLE (not an EPSG code,
+  // PROJ4 string, or EPSG-tagged WKT), UNKNOWN_EPSG_CODE (well-formed code,
+  // not in the registry). Empty when valid=true.
+  string reason = 4;
+}
+
+// The axis names/directions this CRS's own WKT2 registry entry states, in
+// ISO-19111 authority order (from its AXIS[...] clauses -- e.g. EPSG:4326
+// states latitude before longitude), plus this package's own fixed
+// transform I/O convention, which every transform node in this package
+// guarantees regardless of what a CRS's authority defines.
+message CrsAxisInfo {
+  repeated string axis_names = 1;
+  repeated string axis_directions = 2;
+  // Always "x,y = longitude/easting, latitude/northing" -- this package's
+  // own guaranteed node I/O order, not a claim about the CRS's authority
+  // -defined order (which is why this can differ from axis_names/
+  // axis_directions above; e.g. EPSG:4326's ISO-19111 authority order is
+  // latitude-then-longitude, a well-known GIS footgun, but every node in
+  // this package still takes/returns it as lon,lat).
+  string transform_io_order = 3;
+  string note = 4;
+  // INVALID_CRS, UNKNOWN_EPSG_CODE; empty on success.
+  string error = 5;
+}
+
+// A CRS identifier (EPSG code, PROJ4 string, or EPSG-tagged WKT) normalized
+// into its canonical registry form.
+message CrsCanonical {
+  string epsg_code = 1;
+  string authority = 2;
+  string code = 3;
+  string proj4 = 4;
+  string wkt = 5;
+  string name = 6;
+  // INVALID_CRS, UNKNOWN_EPSG_CODE; empty on success.
+  string error = 7;
+}
+
+// A bounding box plus the CRS to reproject it from and to. min/max follow
+// GIS convention (x = longitude/easting, y = latitude/northing).
+message BBoxTransformInput {
+  double min_x = 1;
+  double min_y = 2;
+  double max_x = 3;
+  double max_y = 4;
+  string source_crs = 5;
+  string target_crs = 6;
+}
+
+// The reprojected bounding box. A bbox's corners alone do not always bound
+// its reprojected shape (a projection can bow an edge outward), so this
+// densifies each edge (21 sample points) before taking the min/max --
+// the same technique PROJ's own proj_trans_bounds uses.
+message BBoxResult {
+  double min_x = 1;
+  double min_y = 2;
+  double max_x = 3;
+  double max_y = 4;
+  // INVALID_CRS, NON_FINITE_COORD, TRANSFORM_FAILED; empty on success.
+  string error = 5;
+}

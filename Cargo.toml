@@ -1,0 +1,28 @@
+# Axiom package: christiangeorgelucas/crs-tools
+[package]
+name = "service"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "service"
+path = "service.rs"
+
+[dependencies]
+tonic = "0.12"
+prost = "0.13"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "sync"] }
+tokio-stream = { version = "0.1", features = ["net"] }
+serde_json = "1"
+# CRS transforms + EPSG registry. default-features=false drops proj4rs's
+# "aeqd" feature (proj4rs-geodesic), which compiles a vendored C library via
+# the `cc` crate at build time -- unneeded here (no azimuthal-equidistant
+# projection support required) and avoids any native/C build step, keeping
+# this package a pure-Rust build. crs-definitions (CC0-1.0, zero deps) is
+# proj4rs's own built-in EPSG code -> proj4/WKT1 lookup integration.
+proj4rs = { version = "=0.1.10", default-features = false, features = ["crs-definitions"] }
+crs-definitions = "0.4"
+regex = "1"
+
+[build-dependencies]
+tonic-build = "0.12"

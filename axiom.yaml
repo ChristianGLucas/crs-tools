@@ -1,0 +1,49 @@
+name: christiangeorgelucas/crs-tools
+version: 0.1.0
+language: rust
+description: Deterministic, offline coordinate-reference-system (CRS) and map-projection transforms plus CRS metadata introspection -- EPSG-to-EPSG coordinate/bounding-box reprojection, Web Mercator conversion, UTM zone identification, and CRS name/datum/ellipsoid/axis-order/area-of-use/WKT2/PROJ4 lookup. Wraps proj4rs (pure Rust, MIT OR Apache-2.0) and crs-definitions (CC0-1.0), a zero-dependency embedded EPSG registry -- a fully permissive-licensed, pure-Rust alternative to PROJ's own C library and its Python binding pyproj (whose runtime dependency closure carries an MPL-2.0-licensed component). Distinct from christiangeorgelucas/geo-tools (WGS-84 geodesic distance/bearing/area, no CRS/projection machinery), geo-encoding-tools (geohash + dedicated lat/lon<->UTM/MGRS coordinate conversion, not generic EPSG reprojection), and geometry-tools (planar 2D geometry, no CRS awareness).
+nodes:
+    - name: TransformCoordinate
+      input: CoordinateTransformInput
+      output: TransformedCoordinate
+      description: Transform a single (x, y) coordinate from a source CRS to a target CRS, each given as an EPSG code ("EPSG:4326"/"4326") or a raw PROJ4 definition string, via proj4rs.
+    - name: TransformCoordinates
+      input: BatchCoordinateTransformInput
+      output: BatchTransformedCoordinates
+      description: Transform a list of up to 5,000 (x, y) coordinates between two CRS in one call; a bad point fails independently without aborting the rest of the batch.
+    - name: LonLatToWebMercator
+      input: GeoCoordinate
+      output: MercatorPoint
+      description: Convert a WGS-84 lon/lat point (EPSG:4326) to Web Mercator meters (EPSG:3857), the projection used by most web slippy-tile map libraries.
+    - name: WebMercatorToLonLat
+      input: MercatorPoint
+      output: GeoCoordinate
+      description: Convert a Web Mercator point (EPSG:3857, meters) back to WGS-84 lon/lat (EPSG:4326).
+    - name: GetUTMZone
+      input: GeoCoordinate
+      output: UtmZoneInfo
+      description: Determine the UTM zone number, hemisphere, and EPSG code covering a WGS-84 lon/lat point, cross-checked against the CRS registry -- identifies a suitable projected CRS for accurate local measurement near a point (does not itself convert the coordinate into UTM eastings/northings).
+    - name: GetCRSInfo
+      input: CrsQuery
+      output: CrsInfo
+      description: Look up structured metadata about a CRS from its EPSG code -- name, type (geographic/projected), datum, ellipsoid parameters, unit, and the registry's documented area of applicability.
+    - name: GetCRSRepresentation
+      input: CrsQuery
+      output: CrsRepresentation
+      description: Get the WKT2 (ISO 19162) and PROJ4-string representations of a CRS from its EPSG code.
+    - name: ValidateCRS
+      input: CrsQuery
+      output: CrsValidation
+      description: Validate that an EPSG code, PROJ4 string, or EPSG-tagged WKT identifies a CRS this package can use, without crashing on an unrecognized one.
+    - name: GetCRSAxisInfo
+      input: CrsQuery
+      output: CrsAxisInfo
+      description: List a CRS's own authority-defined axis names/directions (e.g. EPSG:4326 officially orders latitude before longitude, a well-known GIS footgun) alongside this package's own fixed lon/lat-or-x/y transform I/O order.
+    - name: ParseCRS
+      input: CrsQuery
+      output: CrsCanonical
+      description: Parse and normalize a CRS identifier (EPSG code or EPSG-tagged WKT) into its canonical registry form -- authority, code, name, WKT2, and PROJ4 definition.
+    - name: ReprojectBoundingBox
+      input: BBoxTransformInput
+      output: BBoxResult
+      description: Reproject a bounding box from a source CRS to a target CRS, densifying each edge before transforming so a bowed projected edge is still correctly bounded.
