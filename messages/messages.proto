@@ -62,9 +62,11 @@ message CoordinateTransformInput {
 message TransformedCoordinate {
   double x = 1;
   double y = 2;
-  // INVALID_CRS (source_crs/target_crs not recognized), NON_FINITE_COORD,
-  // TRANSFORM_FAILED (input point is outside the projection's valid
-  // domain); empty on success.
+  // EMPTY_INPUT, INPUT_TOO_LARGE (a source_crs/target_crs string over 8,192
+  // bytes), UNPARSEABLE (not a recognizable EPSG code/PROJ4 string/WKT tag),
+  // INVALID_CRS (a well-formed but unbuildable CRS, e.g. a malformed PROJ4
+  // string), NON_FINITE_COORD, TRANSFORM_FAILED (input point is outside the
+  // projection's valid domain); empty on success.
   string error = 3;
 }
 
@@ -83,7 +85,10 @@ message BatchCoordinateTransformInput {
 // with the rest of the batch still transformed.
 message BatchTransformedCoordinates {
   repeated TransformedCoordinate points = 1;
-  // TOO_MANY_POINTS (over 5,000), INVALID_CRS, EMPTY_INPUT; empty on success.
+  // EMPTY_INPUT (no points), TOO_MANY_POINTS (over 5,000), or any
+  // TransformedCoordinate.error value for a bad source_crs/target_crs;
+  // empty on success. A bad individual point never sets this field -- see
+  // that element's own TransformedCoordinate.error instead.
   string error = 2;
 }
 
@@ -111,9 +116,12 @@ message MercatorPoint {
 // definition string ("+proj=longlat +datum=WGS84 +no_defs"), or a WKT
 // string carrying a trailing `ID["EPSG",<code>]` (WKT2) or
 // `AUTHORITY["EPSG","<code>"]]` (WKT1) tag -- the standard way EPSG-derived
-// WKT self-identifies; a WKT string with no such tag cannot be resolved
-// back to a registry entry and is rejected with a structured error, not a
-// crash).
+// WKT self-identifies. The LAST such tag in the string is used (a complete
+// WKT2 document's own outer ID always comes last, after any nested
+// METHOD/PARAMETER EPSG codes) -- pass a complete, well-formed WKT, not a
+// hand-truncated fragment. A WKT string with no such tag at all cannot be
+// resolved back to a registry entry and is rejected with a structured
+// error, not a crash.
 message CrsQuery {
   string crs = 1;
 }
@@ -141,8 +149,9 @@ message CrsInfo {
   string epsg_code = 1;
   string name = 2;
   // "geographic" (GEOGCRS) or "projected" (PROJCRS); "unknown" if the WKT's
-  // outermost keyword is neither (rare, e.g. a raw PROJ4-string CRS with no
-  // registry WKT to classify).
+  // outermost keyword is neither -- a registry entry that is itself neither
+  // a geographic nor a projected CRS, e.g. a vertical (VERTCRS) or compound
+  // (COMPOUNDCRS) entry.
   string crs_type = 3;
   string datum = 4;
   string ellipsoid_name = 5;
@@ -158,7 +167,8 @@ message CrsInfo {
   double area_west_lon = 12;
   double area_north_lat = 13;
   double area_east_lon = 14;
-  // INVALID_CRS, UNKNOWN_EPSG_CODE (well-formed code, not in the registry);
+  // EMPTY_INPUT, INPUT_TOO_LARGE, UNPARSEABLE (crs does not resolve to an
+  // EPSG code), UNKNOWN_EPSG_CODE (well-formed code, not in the registry);
   // empty on success.
   string error = 15;
 }
@@ -168,7 +178,8 @@ message CrsInfo {
 message CrsRepresentation {
   string wkt = 1;
   string proj4 = 2;
-  // INVALID_CRS, UNKNOWN_EPSG_CODE; empty on success.
+  // EMPTY_INPUT, INPUT_TOO_LARGE, UNPARSEABLE, UNKNOWN_EPSG_CODE; empty on
+  // success.
   string error = 3;
 }
 
@@ -177,9 +188,10 @@ message CrsValidation {
   bool valid = 1;
   string epsg_code = 2;
   string name = 3;
-  // Populated when valid=false: EMPTY_INPUT, UNPARSEABLE (not an EPSG code,
-  // PROJ4 string, or EPSG-tagged WKT), UNKNOWN_EPSG_CODE (well-formed code,
-  // not in the registry). Empty when valid=true.
+  // Populated when valid=false: EMPTY_INPUT, INPUT_TOO_LARGE, UNPARSEABLE
+  // (not an EPSG code, PROJ4 string, or EPSG-tagged WKT), INVALID_CRS (a
+  // well-formed but unbuildable PROJ4 string), UNKNOWN_EPSG_CODE
+  // (well-formed code, not in the registry). Empty when valid=true.
   string reason = 4;
 }
 
@@ -199,12 +211,14 @@ message CrsAxisInfo {
   // this package still takes/returns it as lon,lat).
   string transform_io_order = 3;
   string note = 4;
-  // INVALID_CRS, UNKNOWN_EPSG_CODE; empty on success.
+  // EMPTY_INPUT, INPUT_TOO_LARGE, UNPARSEABLE, UNKNOWN_EPSG_CODE; empty on
+  // success.
   string error = 5;
 }
 
-// A CRS identifier (EPSG code, PROJ4 string, or EPSG-tagged WKT) normalized
-// into its canonical registry form.
+// A CRS identifier (EPSG code or EPSG-tagged WKT -- NOT a raw, non-EPSG
+// PROJ4 string, which has no registry entry to normalize against; use
+// ValidateCRS for that case) normalized into its canonical registry form.
 message CrsCanonical {
   string epsg_code = 1;
   string authority = 2;
@@ -212,7 +226,8 @@ message CrsCanonical {
   string proj4 = 4;
   string wkt = 5;
   string name = 6;
-  // INVALID_CRS, UNKNOWN_EPSG_CODE; empty on success.
+  // EMPTY_INPUT, INPUT_TOO_LARGE, UNPARSEABLE, UNKNOWN_EPSG_CODE; empty on
+  // success.
   string error = 7;
 }
 
@@ -236,6 +251,8 @@ message BBoxResult {
   double min_y = 2;
   double max_x = 3;
   double max_y = 4;
-  // INVALID_CRS, NON_FINITE_COORD, TRANSFORM_FAILED; empty on success.
+  // NON_FINITE_COORD, INVALID_ARGUMENT (min_x>max_x or min_y>max_y),
+  // EMPTY_INPUT, INPUT_TOO_LARGE, UNPARSEABLE, INVALID_CRS,
+  // TRANSFORM_FAILED; empty on success.
   string error = 5;
 }
