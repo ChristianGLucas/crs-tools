@@ -126,16 +126,6 @@ mod tests {
     }
 
     #[test]
-    fn test_oversized_batch_is_rejected_before_transforming() {
-        let ax = test_context();
-        let points = (0..5001).map(|i| pt(i as f64 * 0.0001, 0.0)).collect();
-        let input = BatchCoordinateTransformInput { points, source_crs: "EPSG:4326".to_string(), target_crs: "EPSG:3857".to_string() };
-        let out = transform_coordinates(&ax, input).unwrap();
-        assert_eq!(out.error, "TOO_MANY_POINTS");
-        assert!(out.points.is_empty());
-    }
-
-    #[test]
     fn test_bad_crs_is_a_call_level_error() {
         let ax = test_context();
         let input = BatchCoordinateTransformInput { points: vec![pt(1.0, 1.0)], source_crs: "nope".to_string(), target_crs: "EPSG:3857".to_string() };

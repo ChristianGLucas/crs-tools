@@ -5,11 +5,10 @@ use crate::gen::messages::{ BatchCoordinateTransformInput, BatchTransformedCoord
 mod crsutil;
 
 /// Transform a list of (x, y) coordinates from `source_crs` to `target_crs`
-/// in one call (up to 5,000 points). A per-point failure (e.g. one
-/// non-finite coordinate) is reported on that element alone; the rest of
-/// the batch still transforms. A call-level failure (bad CRS, an
-/// oversized/empty batch) reports on the top-level `error` with an empty
-/// `points` list.
+/// in one call. A per-point failure (e.g. one non-finite coordinate) is
+/// reported on that element alone; the rest of the batch still transforms.
+/// A call-level failure (bad CRS, an empty batch) reports on the top-level
+/// `error` with an empty `points` list.
 pub fn transform_coordinates(
     ax: &dyn AxiomContext,
     input: BatchCoordinateTransformInput,
@@ -17,9 +16,6 @@ pub fn transform_coordinates(
     let _ = ax;
     if input.points.is_empty() {
         return Ok(BatchTransformedCoordinates { points: vec![], error: "EMPTY_INPUT".into() });
-    }
-    if input.points.len() > crsutil::MAX_BATCH_POINTS {
-        return Ok(BatchTransformedCoordinates { points: vec![], error: "TOO_MANY_POINTS".into() });
     }
     let from = match crsutil::build_proj(&input.source_crs) {
         Ok(p) => p,

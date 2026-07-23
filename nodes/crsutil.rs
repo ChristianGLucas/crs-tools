@@ -12,12 +12,6 @@
 use proj4rs::proj::Proj;
 use regex::Regex;
 
-/// Max accepted length of a CRS identifier string (bytes) — an EPSG code,
-/// PROJ4 string, or WKT. Checked on the RAW input before any parse/regex, so
-/// a caller cannot force an expensive regex scan over an unbounded string.
-pub const MAX_CRS_LEN: usize = 8_192;
-/// Max points accepted per TransformCoordinates batch call.
-pub const MAX_BATCH_POINTS: usize = 5_000;
 /// Number of points sampled per edge when densifying a bounding box before
 /// reprojecting it (matches the technique PROJ's own proj_trans_bounds uses:
 /// a projection can bow an edge outward, so the reprojected corners alone do
@@ -53,9 +47,6 @@ pub fn parse_epsg_code(query: &str) -> Result<u16, &'static str> {
     let q = query.trim();
     if q.is_empty() {
         return Err("EMPTY_INPUT");
-    }
-    if q.len() > MAX_CRS_LEN {
-        return Err("INPUT_TOO_LARGE");
     }
     if q.chars().all(|c| c.is_ascii_digit()) {
         return q.parse::<u16>().map_err(|_| "UNPARSEABLE");
@@ -94,9 +85,6 @@ pub fn build_proj(query: &str) -> Result<Proj, &'static str> {
     let q = query.trim();
     if q.is_empty() {
         return Err("EMPTY_INPUT");
-    }
-    if q.len() > MAX_CRS_LEN {
-        return Err("INPUT_TOO_LARGE");
     }
     if q.starts_with('+') {
         return Proj::from_proj_string(q).map_err(|_| "INVALID_CRS");

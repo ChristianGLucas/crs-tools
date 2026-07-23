@@ -62,16 +62,15 @@ message CoordinateTransformInput {
 message TransformedCoordinate {
   double x = 1;
   double y = 2;
-  // EMPTY_INPUT, INPUT_TOO_LARGE (a source_crs/target_crs string over 8,192
-  // bytes), UNPARSEABLE (not a recognizable EPSG code/PROJ4 string/WKT tag),
-  // INVALID_CRS (a well-formed but unbuildable CRS, e.g. a malformed PROJ4
-  // string), NON_FINITE_COORD, TRANSFORM_FAILED (input point is outside the
-  // projection's valid domain); empty on success.
+  // EMPTY_INPUT, UNPARSEABLE (not a recognizable EPSG code/PROJ4 string/WKT
+  // tag), INVALID_CRS (a well-formed but unbuildable CRS, e.g. a malformed
+  // PROJ4 string), NON_FINITE_COORD, TRANSFORM_FAILED (input point is
+  // outside the projection's valid domain); empty on success.
   string error = 3;
 }
 
 // A list of coordinates plus the CRS to transform them from and to, for
-// TransformCoordinates (batch). Capped at 5,000 points per call.
+// TransformCoordinates (batch).
 message BatchCoordinateTransformInput {
   repeated XYPoint points = 1;
   string source_crs = 2;
@@ -79,15 +78,15 @@ message BatchCoordinateTransformInput {
 }
 
 // The batch result of TransformCoordinates. `error` is set only for a
-// call-level failure (bad CRS, TOO_MANY_POINTS) and `points` is then empty;
-// a per-point failure (e.g. one non-finite coordinate in an otherwise valid
-// batch) is instead reported on that element's own TransformedCoordinate.error,
+// call-level failure (bad CRS) and `points` is then empty; a per-point
+// failure (e.g. one non-finite coordinate in an otherwise valid batch) is
+// instead reported on that element's own TransformedCoordinate.error,
 // with the rest of the batch still transformed.
 message BatchTransformedCoordinates {
   repeated TransformedCoordinate points = 1;
-  // EMPTY_INPUT (no points), TOO_MANY_POINTS (over 5,000), or any
-  // TransformedCoordinate.error value for a bad source_crs/target_crs;
-  // empty on success. A bad individual point never sets this field -- see
+  // EMPTY_INPUT (no points), or any TransformedCoordinate.error value for
+  // a bad source_crs/target_crs; empty on success. A bad individual point
+  // never sets this field -- see
   // that element's own TransformedCoordinate.error instead.
   string error = 2;
 }
@@ -167,9 +166,9 @@ message CrsInfo {
   double area_west_lon = 12;
   double area_north_lat = 13;
   double area_east_lon = 14;
-  // EMPTY_INPUT, INPUT_TOO_LARGE, UNPARSEABLE (crs does not resolve to an
-  // EPSG code), UNKNOWN_EPSG_CODE (well-formed code, not in the registry);
-  // empty on success.
+  // EMPTY_INPUT, UNPARSEABLE (crs does not resolve to an EPSG code),
+  // UNKNOWN_EPSG_CODE (well-formed code, not in the registry); empty on
+  // success.
   string error = 15;
 }
 
@@ -178,8 +177,7 @@ message CrsInfo {
 message CrsRepresentation {
   string wkt = 1;
   string proj4 = 2;
-  // EMPTY_INPUT, INPUT_TOO_LARGE, UNPARSEABLE, UNKNOWN_EPSG_CODE; empty on
-  // success.
+  // EMPTY_INPUT, UNPARSEABLE, UNKNOWN_EPSG_CODE; empty on success.
   string error = 3;
 }
 
@@ -188,7 +186,7 @@ message CrsValidation {
   bool valid = 1;
   string epsg_code = 2;
   string name = 3;
-  // Populated when valid=false: EMPTY_INPUT, INPUT_TOO_LARGE, UNPARSEABLE
+  // Populated when valid=false: EMPTY_INPUT, UNPARSEABLE
   // (not an EPSG code, PROJ4 string, or EPSG-tagged WKT), INVALID_CRS (a
   // well-formed but unbuildable PROJ4 string), UNKNOWN_EPSG_CODE
   // (well-formed code, not in the registry). Empty when valid=true.
@@ -211,8 +209,7 @@ message CrsAxisInfo {
   // this package still takes/returns it as lon,lat).
   string transform_io_order = 3;
   string note = 4;
-  // EMPTY_INPUT, INPUT_TOO_LARGE, UNPARSEABLE, UNKNOWN_EPSG_CODE; empty on
-  // success.
+  // EMPTY_INPUT, UNPARSEABLE, UNKNOWN_EPSG_CODE; empty on success.
   string error = 5;
 }
 
@@ -226,8 +223,7 @@ message CrsCanonical {
   string proj4 = 4;
   string wkt = 5;
   string name = 6;
-  // EMPTY_INPUT, INPUT_TOO_LARGE, UNPARSEABLE, UNKNOWN_EPSG_CODE; empty on
-  // success.
+  // EMPTY_INPUT, UNPARSEABLE, UNKNOWN_EPSG_CODE; empty on success.
   string error = 7;
 }
 
@@ -252,7 +248,7 @@ message BBoxResult {
   double max_x = 3;
   double max_y = 4;
   // NON_FINITE_COORD, INVALID_ARGUMENT (min_x>max_x or min_y>max_y),
-  // EMPTY_INPUT, INPUT_TOO_LARGE, UNPARSEABLE, INVALID_CRS,
-  // TRANSFORM_FAILED; empty on success.
+  // EMPTY_INPUT, UNPARSEABLE, INVALID_CRS, TRANSFORM_FAILED; empty on
+  // success.
   string error = 5;
 }

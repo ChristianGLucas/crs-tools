@@ -1,5 +1,5 @@
 name: christiangeorgelucas/crs-tools
-version: 0.1.0
+version: 0.1.1
 language: rust
 description: Deterministic, offline coordinate-reference-system (CRS) and map-projection transforms plus CRS metadata introspection -- EPSG-to-EPSG coordinate/bounding-box reprojection, Web Mercator conversion, UTM zone identification, and CRS name/datum/ellipsoid/axis-order/area-of-use/WKT2/PROJ4 lookup. Wraps proj4rs (pure Rust, MIT OR Apache-2.0) and crs-definitions (CC0-1.0), a zero-dependency embedded EPSG registry -- a fully permissive-licensed, pure-Rust alternative to PROJ's own C library and its Python binding pyproj (whose runtime dependency closure carries an MPL-2.0-licensed component). Distinct from christiangeorgelucas/geo-tools (WGS-84 geodesic distance/bearing/area, no CRS/projection machinery), geo-encoding-tools (geohash + dedicated lat/lon<->UTM/MGRS coordinate conversion, not generic EPSG reprojection), and geometry-tools (planar 2D geometry, no CRS awareness).
 nodes:
@@ -10,7 +10,7 @@ nodes:
     - name: TransformCoordinates
       input: BatchCoordinateTransformInput
       output: BatchTransformedCoordinates
-      description: Transform a list of up to 5,000 (x, y) coordinates between two CRS in one call; a bad point fails independently without aborting the rest of the batch.
+      description: Transform a list of (x, y) coordinates between two CRS in one call; a bad point fails independently without aborting the rest of the batch.
     - name: LonLatToWebMercator
       input: GeoCoordinate
       output: MercatorPoint

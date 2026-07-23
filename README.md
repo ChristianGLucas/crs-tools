@@ -29,7 +29,7 @@ and `geometry-tools` (planar 2D computational geometry, no CRS awareness).
 | Node | Does |
 |---|---|
 | `TransformCoordinate` | Transform a single (x, y) coordinate between two CRS |
-| `TransformCoordinates` | Transform a batch of up to 5,000 coordinates between two CRS |
+| `TransformCoordinates` | Transform a batch of coordinates between two CRS |
 | `LonLatToWebMercator` | WGS-84 lon/lat (EPSG:4326) → Web Mercator meters (EPSG:3857) |
 | `WebMercatorToLonLat` | Web Mercator meters → WGS-84 lon/lat |
 | `GetUTMZone` | UTM zone/hemisphere/EPSG code covering a lon/lat point |
