@@ -1,7 +1,7 @@
 # crs-tools
 
 Deterministic, offline coordinate-reference-system (CRS) and map-projection
-transforms plus CRS metadata introspection, for the [Axiom](https://axiom.dev)
+transforms plus CRS metadata introspection, for the [Axiom](https://axiomide.com)
 marketplace (handle `christiangeorgelucas`).
 
 Converts coordinates between coordinate reference systems (EPSG codes),
